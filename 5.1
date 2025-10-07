@@ -1,0 +1,99 @@
+Step 1: Setup Node.js and Mongoose
+
+Initialize a Node.js project:
+
+npm init -y
+
+
+Install required packages:
+
+npm install mongoose express body-parser
+
+Step 2: Connect to MongoDB
+
+Create a server.js file:
+
+const express = require('express');
+const mongoose = require('mongoose');
+const bodyParser = require('body-parser');
+
+const app = express();
+app.use(bodyParser.json());
+
+// Connect to MongoDB
+mongoose.connect('mongodb://127.0.0.1:27017/productDB', {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+})
+.then(() => console.log("MongoDB connected"))
+.catch(err => console.error(err));
+
+// Start server
+app.listen(3000, () => console.log("Server running on port 3000"));
+
+Step 3: Define the Product Schema
+const productSchema = new mongoose.Schema({
+    name: { type: String, required: true },
+    price: { type: Number, required: true },
+    category: { type: String, required: true }
+});
+
+const Product = mongoose.model('Product', productSchema);
+
+Step 4: Implement CRUD Operations
+1. Create a Product
+app.post('/products', async (req, res) => {
+    try {
+        const product = new Product(req.body);
+        const savedProduct = await product.save();
+        res.status(201).json(savedProduct);
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+2. Read All Products
+app.get('/products', async (req, res) => {
+    try {
+        const products = await Product.find();
+        res.json(products);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+3. Update a Product by ID
+app.put('/products/:id', async (req, res) => {
+    try {
+        const updatedProduct = await Product.findByIdAndUpdate(
+            req.params.id,
+            req.body,
+            { new: true, runValidators: true }
+        );
+        res.json(updatedProduct);
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+4. Delete a Product by ID
+app.delete('/products/:id', async (req, res) => {
+    try {
+        await Product.findByIdAndDelete(req.params.id);
+        res.json({ message: "Product deleted" });
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+Step 5: Test the Application
+
+Use Postman or cURL to test the routes:
+
+POST /products → Add a product
+
+GET /products → Retrieve all products
+
+PUT /products/:id → Update a product
+
+DELETE /products/:id → Delete a product
