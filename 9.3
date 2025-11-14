@@ -1,0 +1,157 @@
+Architecture Overview
+[ User Browser ]
+        ↓
+[ AWS Route 53 (optional custom domain) ]
+        ↓
+[ Application Load Balancer (ALB) ]
+        ↓
+[ Multiple EC2 instances running Node.js backend ]
+        ↑
+[ React frontend served from EC2 / S3 / CloudFront ]
+
+⚙️ Step 1: Build the Full Stack App
+🖥️ Frontend (React)
+
+Create and build your React app:
+
+npx create-react-app frontend
+cd frontend
+npm run build
+
+
+This generates a production-ready /build folder.
+
+⚙️ Backend (Node.js + Express)
+
+Example simple server:
+
+server.js
+
+const express = require('express');
+const app = express();
+const cors = require('cors');
+const path = require('path');
+
+app.use(cors());
+app.use(express.json());
+
+app.get('/api', (req, res) => {
+  res.json({ message: "Hello from the backend!" });
+});
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+☁️ Step 2: Launch EC2 Instances
+🔹 Create Backend EC2 Instances
+
+Go to AWS Management Console → EC2 → Launch Instance
+
+Choose Amazon Linux 2 or Ubuntu 22.04
+
+Instance type: t2.micro (Free Tier)
+
+Configure:
+
+Add HTTP (80) and custom port 5000 in Security Group
+
+Launch 2 instances for backend
+
+SSH into each instance:
+
+ssh -i your-key.pem ec2-user@<instance-public-ip>
+
+
+Install Node.js:
+
+sudo apt update
+sudo apt install -y nodejs npm
+
+
+Clone your backend repo or upload files:
+
+git clone <your-backend-repo>
+cd backend
+npm install
+node server.js
+
+
+Your backend should now run on each instance on port 5000.
+
+🌐 Step 3: Set Up Application Load Balancer (ALB)
+
+Go to AWS Console → EC2 → Load Balancers → Create Load Balancer
+
+Choose Application Load Balancer
+
+Set:
+
+Scheme: Internet-facing
+
+Listeners: HTTP (Port 80)
+
+Create a Target Group:
+
+Type: Instances
+
+Protocol: HTTP
+
+Port: 5000
+
+Register both backend EC2 instances with the Target Group.
+
+Create and attach the ALB to a VPC and Security Group (allow HTTP).
+
+Once active, note the ALB DNS name (e.g., my-app-alb-123456.us-east-1.elb.amazonaws.com).
+
+🖼️ Step 4: Deploy Frontend
+Option 1: Serve React from EC2
+
+Launch a new EC2 instance for frontend.
+
+SSH in and install Nginx:
+
+sudo apt update
+sudo apt install nginx -y
+
+
+Copy the frontend/build folder to /var/www/html:
+
+sudo rm -rf /var/www/html/*
+sudo cp -r build/* /var/www/html/
+sudo systemctl restart nginx
+
+
+In your React .env, set:
+
+REACT_APP_API_URL=http://<ALB-DNS-NAME>/api
+
+
+Rebuild and redeploy if needed.
+
+Option 2: Serve React from S3 + CloudFront (recommended)
+
+Upload the /build folder to an S3 bucket (public hosting).
+
+Enable Static Website Hosting.
+
+Add CloudFront for caching and HTTPS.
+
+⚙️ Step 5: Connect Everything
+
+Now test from your browser:
+
+http://<frontend-ec2-public-ip>   OR   http://<cloudfront-url>
+
+
+Click a button or make a request that calls the backend — you should see responses from the ALB, which distributes load between backend EC2s.
+
+🧠 (Optional) Step 6: Add Domain with Route 53
+
+Buy or connect your domain in Route 53.
+
+Create a Record Set (A Record) that points your domain to the ALB’s DNS name.
+
+Wait a few minutes, and you’ll have:
+
+https://www.yourdomain.com → ALB → Backend EC2s
