@@ -1,0 +1,75 @@
+Step 1: Create a .dockerignore file
+
+This prevents unnecessary files from bloating the Docker image.
+
+node_modules
+build
+.git
+.gitignore
+Dockerfile
+Dockerfile.dev
+README.md
+
+🏗️ Step 2: Create the multi-stage Dockerfile
+
+Create a file named Dockerfile in the project root with this content:
+
+# ---------- Stage 1: Build React App ----------
+FROM node:18-alpine AS build
+
+# Set working directory
+WORKDIR /app
+
+# Copy package.json and install dependencies
+COPY package*.json ./
+RUN npm install
+
+# Copy the rest of the app source code
+COPY . .
+
+# Build the production-ready React app
+RUN npm run build
+
+
+# ---------- Stage 2: Serve with Nginx ----------
+FROM nginx:alpine
+
+# Copy the build output from the previous stage to Nginx’s public directory
+COPY --from=build /app/build /usr/share/nginx/html
+
+# Expose port 80
+EXPOSE 80
+
+# Start Nginx
+CMD ["nginx", "-g", "daemon off;"]
+
+🚀 Step 3: Build the Docker image
+
+Run the following in your project directory:
+
+docker build -t my-react-app .
+
+
+This will:
+
+Build your app using Node.js,
+
+Copy only the compiled static files into the lightweight Nginx container.
+
+🧩 Step 4: Run the container
+
+Start the app using:
+
+docker run -d -p 80:80 my-react-app
+
+
+Then open your browser and go to:
+👉 http://localhost
+
+You should see your React app running.
+
+📏 Step 5: Check image size
+
+Compare the size of your image to a normal Node-based one:
+
+docker images
